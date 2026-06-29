@@ -1,132 +1,176 @@
-````markdown
 # Learninx
 
-> An interactive **Linux learning platform** that teaches the command line through short lessons, hands-on challenges, and a safe in-browser terminal.
+An interactive Linux learning platform that teaches the command line through short lessons, hands-on challenges, and a safe in-browser terminal.
 
-Built with **Next.js 14 (App Router)**, **TypeScript**, **Prisma + SQLite**, **Tailwind CSS**, and **xterm.js**.
+No login. No accounts. Open the page, type commands, learn.
 
----
+## Highlights
 
-## ✨ Features
+- Bite-sized Markdown lessons covering the core of the Linux command line.
+- In-browser terminal sandbox (xterm.js) with a small POSIX-style shell and an in-memory virtual filesystem — nothing touches the user's real machine.
+- Auto-graded challenges and end-of-lesson quizzes with score-based completion.
+- Anonymous progress tracking via a per-browser cookie. No signup.
+- Dark, terminal-inspired UI.
+- Ships with Docker support for production-style deployments.
 
-- 📘 **Bite-sized Markdown lessons** covering the core of Linux.
-- 🖥️ **In-browser terminal sandbox** — try real shell commands (pwd, ls, cd, mkdir, cat, chmod, ps aux, …) with no risk.
-- ⚡ **Challenges** with automatic grading.
-- 🧠 **Quizzes** at the end of every lesson with score-based completion.
-- 🏆 **Progress tracking** — per-browser cookie; no signup, no accounts, no friction.
-- 🌙 Dark, terminal-inspired UI.
+## Stack
 
----
+| Layer    | Technology                                     |
+| -------- | ---------------------------------------------- |
+| Runtime  | Node.js 20 LTS                                 |
+| Framework| Next.js 14 (App Router) + TypeScript           |
+| Styling  | Tailwind CSS                                   |
+| ORM      | Prisma                                         |
+| Database | SQLite (file-based, zero-config)               |
+| Terminal | xterm.js + xterm-addon-fit                     |
+| Markdown | react-markdown + remark-gfm                    |
 
-## 🚀 Quick start
+## Quick start (local development)
 
 ### Prerequisites
-- **Node.js 18.18+** (20.x recommended)
+
+- Node.js 18.18 or newer (20.x recommended)
 - npm
 
-### 1. Install dependencies
+### Setup
 
 ```bash
+# 1. Install dependencies
 npm install
-```
 
-### 2. Initialize the database
-
-```bash
+# 2. Create the SQLite database and apply the schema
 npx prisma db push
+
+# 3. Seed the lesson catalogue (5 lessons + quizzes)
 npm run db:seed
-```
 
-This creates a `dev.db` SQLite file with 5 lessons and matching quizzes.
-
-### 3. Run the dev server
-
-```bash
+# 4. Start the dev server
 npm run dev
 ```
 
-Open **http://localhost:3000** 🚀
+Then open <http://localhost:3000>.
 
-That's it — there's no signup. Your progress is saved in a per-browser cookie.
+## Docker
 
----
-
-## 🐳 Run with Docker
-
-A production-ready, multi-stage Dockerfile is included.
+A multi-stage Dockerfile is included. Production builds use Next.js's `output: 'standalone'` mode, so the runtime image carries only the traced `node_modules` plus a single `server.js`.
 
 ```bash
+# Build and run with Docker directly
 docker build -t learninx:latest .
 docker run --rm -p 3000:3000 -v learninx-data:/data learninx:latest
 ```
 
-Or use the supplied compose file:
+Or with the supplied compose file:
 
 ```bash
 docker compose up --build
 ```
 
-The SQLite database (with the lesson catalogue and your per-visitor progress)
-is persisted on a named volume (`learninx-data`). Removing it resets all state.
+The SQLite database (lesson catalogue + per-visitor progress) is stored on a named volume at `/data`. Removing the volume resets all state.
 
-### Build details
+### Build stages
 
-| Stage         | Purpose                                                            |
-| ------------- | ------------------------------------------------------------------ |
-| `deps`        | Install all (dev + runtime) npm dependencies.                      |
-| `builder`     | Generate the Prisma client + run `next build` with `output: standalone`. |
-| `runner`      | Tiny `node:20-alpine` runtime that runs the standalone `server.js`. |
+| Stage      | Purpose                                                                    |
+| ---------- | -------------------------------------------------------------------------- |
+| `deps`     | Install all npm dependencies (build + runtime).                            |
+| `builder`  | Run `prisma generate` and `next build` with `output: 'standalone'`.        |
+| `runner`   | Minimal `node:20-alpine` image that runs the standalone `server.js`.        |
 
-On every container start the runner auto-applies the Prisma schema and seeds
-the lesson catalogue into `/data/dev.db` if it's empty, then launches the
-Next.js server on **port 3000**.
+On every container start, the runner applies the Prisma schema (`prisma db push`), seeds the lesson catalogue (`tsx prisma/seed.ts`), then launches the Next.js server on port 3000. The steps are idempotent — re-running them on an existing database is safe.
 
----
-
-## 🧱 Project structure
+## Project structure
 
 ```
 learninx/
 ├── prisma/
-│   ├── schema.prisma       # Database models (no User table — anonymous)
-│   └── seed.ts             # Loads the lesson catalogue + quiz questions
+│   ├── schema.prisma      # Database models (Lesson, QuizQuestion,
+│   │                      # LessonProgress, QuizAttempt — no User table)
+│   ├── seed.ts            # Lesson catalogue + quiz questions
+│   └── dev.db             # SQLite database (gitignored)
 └── src/
+    ├── middleware.ts      # Edge middleware that mints the visitor cookie
     ├── app/
-    │   ├── lessons/        # Lesson index + [slug] detail + server actions
-    │   ├── layout.tsx      # Root layout with nav + footer
-    │   └── page.tsx        # Landing page
+    │   ├── layout.tsx     # Root layout: nav, footer
+    │   ├── page.tsx       # Landing page
+    │   ├── loading.tsx    # Global loading state
+    │   ├── not-found.tsx  # 404 page
+    │   └── lessons/
+    │       ├── page.tsx              # Lesson index
+    │       ├── [slug]/page.tsx       # Lesson detail (markdown + terminal + challenge + quiz)
+    │       └── [slug]/actions.ts     # Server actions (mark complete, submit challenge, submit quiz)
     ├── components/
-    │   ├── Terminal.tsx        # xterm.js sandbox
-    │   ├── ChallengeRunner.tsx # Auto-graded practice
+    │   ├── Terminal.tsx        # xterm.js sandbox (client-only)
+    │   ├── ChallengeRunner.tsx # Auto-graded practice form
     │   ├── LessonQuiz.tsx      # Multi-question grader
-    │   └── …
+    │   ├── CompleteButton.tsx  # Manual "Mark complete" button
+    │   └── Markdown.tsx        # react-markdown wrapper
     └── lib/
-        ├── visitor.ts      # Per-browser visitor id (no auth)
-        ├── db.ts           # Prisma singleton
-        ├── lessons.ts      # Lesson catalogue + quiz seeds
+        ├── visitor.ts     # Reads the per-browser visitor id (httpOnly cookie)
+        ├── db.ts          # Prisma client singleton
+        ├── lessons.ts     # Lesson + quiz seed data (loaded by prisma/seed.ts)
+        ├── types.ts       # Shared types
         └── shell/
-            ├── fs.ts       # In-memory virtual filesystem
-            └── evaluator.ts # Tiny POSIX-like shell interpreter
+            ├── fs.ts          # In-memory virtual filesystem
+            └── evaluator.ts   # POSIX-style shell interpreter
 ```
 
----
+## How progress tracking works
 
-## ➕ Adding a new lesson
+The app does not have user accounts. Instead:
 
-Open [`src/lib/lessons.ts`](src/lib/lessons.ts) and add an entry to `LESSONS`, plus a matching block in `QUIZ_QUESTIONS`.
+1. An edge middleware (`src/middleware.ts`) runs on every request. The first time a browser hits the app, it sets an httpOnly cookie `learninx_visitor=v_<24 hex chars>` that expires in one year.
+2. All progress records (lesson completions, challenge attempts, quiz attempts) are tagged with that visitor id.
+3. On subsequent visits, the same id ties new activity back to the original browser.
+
+This gives each learner a persistent "account" without ever asking them to register. Clearing cookies (or browsing in a private window) starts a fresh profile.
+
+## Available shell commands
+
+The sandbox in `src/lib/shell/evaluator.ts` implements the most common teaching commands:
+
+- Navigation and inspection: `pwd`, `cd`, `ls` (incl. `-l`, `-a`, `-la`), `cat`, `head`, `wc`.
+- File operations: `mkdir` (incl. `-p`), `touch`, `rm` (incl. `-r`, `-f`), `mv`, `cp`.
+- Permissions and process info: `chmod`, `ps`, `top` (read-only informational output).
+- System info: `uname`, `uptime`, `free`, `df`, `whoami`, `hostname`, `date`, `echo`, `clear`, `help`.
+- Shell built-ins: command history (Up/Down arrows), `Ctrl+C` to abort a line, `Ctrl+L` to clear.
+
+Type `help` inside the terminal for the full list.
+
+The shell evaluates each command against the in-memory virtual filesystem in `src/lib/shell/fs.ts`. Running `rm -rf /` is harmless — the root node is just a JavaScript object.
+
+## Adding a new lesson
+
+All lessons live in code. Edit `src/lib/lessons.ts` and append a new entry to `LESSONS`, plus a matching block in `QUIZ_QUESTIONS`:
 
 ```ts
-{
-  slug: 'my-new-lesson',
-  title: 'Title',
-  description: 'Short blurb.',
-  difficulty: 'beginner',   // beginner | intermediate | advanced
-  order: 6,                 // next available number
-  trackCommand: 'grep',     // command that should be tried in the sandbox
-  challenge: 'Find the word "hello" in notes.txt',
-  solution: 'grep hello notes.txt',
-  content: `# My new lesson...`,
-}
+// src/lib/lessons.ts
+export const LESSONS: LessonSeed[] = [
+  // …existing entries…
+  {
+    slug: 'my-new-lesson',
+    title: 'Title',
+    description: 'Short blurb shown on the lessons index.',
+    difficulty: 'beginner',           // beginner | intermediate | advanced
+    order: 6,                         // next available order number
+    trackCommand: 'grep',             // command to surface in the sandbox hint
+    challenge: 'Find lines containing "hello" in notes.txt',
+    solution: 'grep hello notes.txt', // pipe-separated alternatives: 'a || b'
+    content: `# My new lesson
+
+Markdown content goes here.
+`,
+  },
+];
+
+export const QUIZ_QUESTIONS: QuizQuestionSeed[] = [
+  // …existing entries…
+  {
+    lessonSlug: 'my-new-lesson',
+    questions: [
+      { prompt: 'Which command prints text to the screen?', answer: 'echo' },
+    ],
+  },
+];
 ```
 
 Then re-seed:
@@ -135,35 +179,41 @@ Then re-seed:
 npm run db:seed
 ```
 
-The lesson will then appear at `/lessons/my-new-lesson`.
+The new lesson will be live at `/lessons/my-new-lesson`.
 
----
+## NPM scripts
 
-## 🔌 Configuration
+| Script             | Description                                                          |
+| ------------------ | -------------------------------------------------------------------- |
+| `npm run dev`      | Start the dev server on http://localhost:3000.                       |
+| `npm run build`    | Run `prisma generate` and produce a production build in `.next/`.    |
+| `npm run start`    | Serve the production build.                                          |
+| `npm run lint`     | Lint the codebase with `next lint`.                                  |
+| `npm run db:push`  | Apply the Prisma schema to `dev.db`.                                 |
+| `npm run db:seed`  | Re-seed lessons and quiz questions (idempotent).                     |
+| `npm run db:reset` | Drop and re-create the database, then re-seed.                       |
 
-Environment variables (copy `.env.example` to `.env`):
+## Configuration
 
-| Var            | Example         | Purpose                          |
-| -------------- | --------------- | -------------------------------- |
-| `DATABASE_URL` | `file:./dev.db` | Prisma connection string.        |
+The app reads a single optional environment variable:
 
-Anonymous mode means no other secrets are needed.
+| Variable        | Example           | Purpose                          |
+| --------------- | ----------------- | -------------------------------- |
+| `DATABASE_URL`  | `file:./dev.db`   | Prisma connection string.        |
 
----
+In production, the Dockerfile defaults `DATABASE_URL` to `file:/data/dev.db`, where `/data` is the persisted volume.
 
-## 🧪 How the sandbox works
+No other secrets are required — the app is anonymous, has no JWT signing keys, and no third-party integrations.
 
-Real Linux requires kernel-level isolation that a browser cannot provide. To keep **Learninx zero-install and 100% safe**, the terminal implements a small **POSIX-flavoured shell in TypeScript**:
+## Architecture decisions
 
-- A virtual in-memory filesystem ([`src/lib/shell/fs.ts`](src/lib/shell/fs.ts))
-- A growing library of common commands ([`src/lib/shell/evaluator.ts`](src/lib/shell/evaluator.ts))
-- Sessions start at `~` and survive inside the tab — nothing touches your real machine.
+A few choices are deliberate and worth knowing if you plan to extend the project:
 
-This is the same approach used by many coding-interview sandbox platforms. When you're ready to work on a real Linux server, the same skills transfer 1:1.
+- **SQLite is a feature, not a placeholder.** The app is meant to be deployable as a single self-contained container. SQLite keeps that promise. To scale to many concurrent writers, swap `provider = "sqlite"` to `provider = "postgresql"` in `prisma/schema.prisma` and update `DATABASE_URL`.
+- **No xterm.js on the server.** The terminal is loaded client-side via dynamic imports inside a `useEffect` so xterm's browser-only globals never reach the server bundle. This is why the lesson page is small on the client initial payload.
+- **`output: 'standalone'`.** The Next.js config emits a runnable `server.js` plus a traced `node_modules/` directory. The Dockerfile's runtime stage copies just that.
+- **Server actions, not API routes.** All writes (lesson completion, challenge submission, quiz grading) are Next.js Server Actions colocated with the lesson route under `src/app/lessons/[slug]/actions.ts`. This keeps the data flow explicit and visible.
 
----
+## License
 
-## 📜 License
-
-MIT — go teach someone Linux.
-````
+MIT — see [`LICENSE`](LICENSE) if present, otherwise standard MIT terms apply.
