@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0b0f12;
+  color: #e2e8f0;
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Markdoc / Markdown styling */
+.prose-lx {
+  line-height: 1.7;
+  max-width: none;
+}
+.prose-lx h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: #82aaff;
+}
+.prose-lx h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+  color: #7fdbca;
+}
+.prose-lx p {
+  margin: 0.75rem 0;
+}
+.prose-lx ul,
+.prose-lx ol {
+  margin: 0.75rem 0 0.75rem 1.5rem;
+}
+.prose-lx li {
+  margin: 0.25rem 0;
+}
+.prose-lx code {
+  background: #111827;
+  color: #fde68a;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
+.prose-lx pre {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  padding: 1rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+.prose-lx pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+.prose-lx blockquote {
+  border-left: 4px solid #7fdbca;
+  background: rgba(127, 219, 202, 0.05);
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
+  border-radius: 0 6px 6px 0;
+  color: #a7f3d0;
+}
+.prose-lx table {
+  border-collapse: collapse;
+  margin: 1rem 0;
+  width: 100%;
+}
+.prose-lx th,
+.prose-lx td {
+  border: 1px solid #1f2937;
+  padding: 0.4rem 0.75rem;
+  text-align: left;
+}
+.prose-lx th {
+  background: #111827;
+}

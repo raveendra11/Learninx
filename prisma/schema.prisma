@@ -1,0 +1,73 @@
+// Learninx database schema.
+// SQLite is used for zero-config local development.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String?
+  passwordHash String
+  points       Int            @default(0)
+  createdAt    DateTime       @default(now())
+
+  progress     LessonProgress[]
+  attempts     QuizAttempt[]
+}
+
+model Lesson {
+  id           String         @id @default(cuid())
+  slug         String         @unique
+  title        String
+  description  String
+  difficulty   String         // beginner | intermediate | advanced
+  order        Int
+  content      String         // markdown
+  trackCommand String?        // optional command the sandbox should teach
+  challenge    String?        // optional challenge description
+  solution     String?        // expected command(s)
+
+  progress     LessonProgress[]
+  attempts     QuizAttempt[]
+  questions    QuizQuestion[]
+}
+
+model LessonProgress {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, lessonId])
+}
+
+model QuizQuestion {
+  id        String   @id @default(cuid())
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  prompt    String
+  answer    String   // expected exact answer (case-insensitive trim match)
+  order     Int      @default(0)
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  lesson    Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  score     Int      // 0..100
+  correct   Int
+  total     Int
+  createdAt DateTime @default(now())
+}
