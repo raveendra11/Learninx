@@ -2,6 +2,10 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getVisitorId } from '@/lib/visitor';
 
+// The home page reads the database and the per-browser visitor cookie, so it
+// must be rendered on demand and never at build time (no DB exists then).
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const lessonCount = await prisma.lesson.count();
   const visitorId = getVisitorId();

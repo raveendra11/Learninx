@@ -1,35 +1,44 @@
 # syntax=docker/dockerfile:1.7
+#
+# Learninx production image.
+#
+# Stages:
+#   deps    - install all npm deps (incl. dev) so `next build` and the
+#             Prisma client generation succeed.
+#   builder - generate prisma client + `next build` (output: standalone).
+#   runner  - minimal `node:20-alpine` runtime that executes the
+#             standalone `server.js`. Persists SQLite at /data, seeds the
+#             lesson catalogue on every start via the plain-JS
+#             `prisma/seed.cjs` (no tsx, esbuild, or other dev-only deps
+#             required at runtime).
+#
 
-# ---------- Stage 1: install all dependencies (including dev deps for build) ----------
+# ---------- Stage 1: install dependencies ----------
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# libc6-compat lets Prisma's engine binaries load on Alpine.
-RUN apk add --no-cache libc6-compat
+# Prisma's engines need libc + OpenSSL 3 on Alpine.
+RUN apk add --no-cache libc6-compat openssl
 
-# Copy lock file first for layer caching.
+# Copy manifests and Prisma schema so `prisma generate` (postinstall) has
+# what it needs.
 COPY package.json package-lock.json* ./
-# `npm ci` is faster & reproducible. Allow fallback to `npm install` if a
-# lockfile isn't committed.
+COPY prisma ./prisma
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# ---------- Stage 2: build the Next.js standalone bundle ----------
+# ---------- Stage 2: build ----------
 FROM node:20-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat openssl
 
-# Bring in the installed node_modules from the deps stage.
 COPY --from=deps /app/node_modules ./node_modules
-# Now copy the rest of the source.
 COPY . .
 
-# DATABASE_URL is required by Prisma's postinstall hook (`prisma generate`).
-# We just point it at an empty placeholder; it won't be touched at build time.
+# Build-time placeholder. The real DATABASE_URL is set in `runner`.
 ENV DATABASE_URL="file:./build-time-placeholder.db" \
     NEXT_TELEMETRY_DISABLED=1
 
-# Generate the Prisma client + run the Next.js production build.
-RUN npm run build
+RUN npx prisma generate && npm run build
 
 # ---------- Stage 3: minimal runtime image ----------
 FROM node:20-alpine AS runner
@@ -41,36 +50,32 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     DATABASE_URL="file:/data/dev.db"
 
-# Alpine needs libstdc++ for native bcrypt/prisma binaries and the OpenSSL
-# 3 runtime for Next's TLS helpers.
 RUN apk add --no-cache libc6-compat openssl
 
-# Create a non-root user for runtime safety.
+# Non-root runtime user.
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
-# Persistent SQLite volume — the lesson catalogue + per-visitor progress live here.
+# Persistent SQLite volume mount point.
 RUN mkdir -p /data && chown -R nextjs:nodejs /data
 
-# Copy just what the standalone server needs:
-#   1. The build output + traced node_modules.
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Copy what the standalone server needs.
+COPY --chown=nextjs:nodejs public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Bring in prisma assets (the generated client + seed script + schema),
-# because the standalone build does not include dev dependencies and we
-# want the image to be able to (re)initialise the DB on first run.
+# Prisma runtime artifacts (the client package + generated engine +
+# schema + the plain-JS seed), because the standalone build does not
+# include dev dependencies.
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/tsx ./node_modules/tsx
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/typescript ./node_modules/typescript
 
 USER nextjs
 
 EXPOSE 3000
 
-# On every container start, ensure the DB schema exists and the lesson
-# catalogue is seeded, then exec the standalone Next.js server.
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --schema=/app/prisma/schema.prisma --skip-generate && node node_modules/.bin/tsx prisma/seed.ts && node server.js"]
+# On every start: apply the Prisma schema, run the plain-JS seed, then
+# exec the standalone server. All three steps are idempotent.
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push --schema=/app/prisma/schema.prisma --skip-generate && node prisma/seed.cjs && node server.js"]

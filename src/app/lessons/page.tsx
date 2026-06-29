@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getVisitorId } from '@/lib/visitor';
 
+// Always read from the live database — never try to prerender at build time.
+export const dynamic = 'force-dynamic';
+
 export default async function LessonsIndexPage() {
   const lessons = await prisma.lesson.findMany({ orderBy: { order: 'asc' } });
   const visitorId = getVisitorId();
