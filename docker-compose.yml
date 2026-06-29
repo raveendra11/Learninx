@@ -1,0 +1,18 @@
+services:
+  learninx:
+    build: .
+    image: learninx:latest
+    container_name: learninx
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Point the in-container app at the SQLite file on the volume.
+      - DATABASE_URL=file:/data/dev.db
+      - NODE_ENV=production
+    volumes:
+      # Persist the SQLite database + lesson progress across container restarts.
+      - learninx-data:/data
+
+volumes:
+  learninx-data:

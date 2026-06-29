@@ -1,8 +1,15 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
+import { getVisitorId } from '@/lib/visitor';
 
 export default async function Home() {
   const lessonCount = await prisma.lesson.count();
+  const visitorId = getVisitorId();
+
+  const completedCount = await prisma.lessonProgress.count({
+    where: { visitorId, completed: true },
+  });
+  const quizAttempts = await prisma.quizAttempt.count({ where: { visitorId } });
 
   return (
     <div className="space-y-12">
@@ -15,7 +22,7 @@ export default async function Home() {
         </h1>
         <p className="text-slate-400 max-w-2xl mx-auto text-lg">
           Bite-sized lessons, hands-on challenges, and a safe in-browser terminal.
-          No installs. No risk. Just open the site and start typing commands.
+          No signup. No install. Just open the site and start typing commands.
         </p>
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link
@@ -24,19 +31,25 @@ export default async function Home() {
           >
             Start learning →
           </Link>
-          <Link
-            href="/signup"
+          <a
+            href="#how-it-works"
             className="border border-slate-700 px-6 py-3 rounded-md hover:border-terminal-accent"
           >
-            Create account
-          </Link>
+            How it works
+          </a>
         </div>
         <p className="text-xs text-slate-500 mt-4">
-          {lessonCount} lessons available — fully free.
+          {lessonCount} lessons available — free forever.
         </p>
+        {(completedCount > 0 || quizAttempts > 0) && (
+          <p className="text-xs text-slate-400 mt-1">
+            Your progress: {completedCount}/{lessonCount} lessons •{' '}
+            {quizAttempts} quiz attempts
+          </p>
+        )}
       </section>
 
-      <section className="grid md:grid-cols-3 gap-6">
+      <section id="how-it-works" className="grid md:grid-cols-3 gap-6">
         <FeatureCard
           icon="📘"
           title="Step-by-step lessons"
@@ -50,7 +63,7 @@ export default async function Home() {
         <FeatureCard
           icon="🏆"
           title="Quizzes & points"
-          body="Earn points for each challenge you complete. Track your progress on a personal dashboard."
+          body="Earn points for each challenge you complete. Your progress is saved on this browser."
         />
       </section>
 

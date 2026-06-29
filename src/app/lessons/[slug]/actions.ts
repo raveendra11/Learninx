@@ -2,29 +2,19 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getSessionUser } from '@/lib/auth';
+import { getVisitorId } from '@/lib/visitor';
 import { prisma } from '@/lib/db';
 import type { QuizAnswerResult } from '@/lib/types';
 
 export async function markLessonCompleteAction(lessonId: string): Promise<void> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error('UNAUTHENTICATED');
-  }
-
+  const visitorId = getVisitorId();
   await prisma.lessonProgress.upsert({
-    where: { userId_lessonId: { userId: user.id, lessonId } },
+    where: { visitorId_lessonId: { visitorId, lessonId } },
     update: { completed: true },
-    create: { userId: user.id, lessonId, completed: true },
+    create: { visitorId, lessonId, completed: true },
   });
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { points: { increment: 10 } },
-  });
-
   revalidatePath('/lessons');
-  revalidatePath('/dashboard');
+  revalidatePath('/');
 }
 
 export async function submitChallengeAction(
@@ -32,8 +22,7 @@ export async function submitChallengeAction(
   lessonSlug: string,
   command: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const user = await getSessionUser();
-  if (!user) return { ok: false, message: 'Please log in to submit.' };
+  const visitorId = getVisitorId();
 
   const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
   if (!lesson?.solution) {
@@ -48,19 +37,14 @@ export async function submitChallengeAction(
 
   if (accepted.includes(normalize(command))) {
     await prisma.lessonProgress.upsert({
-      where: { userId_lessonId: { userId: user.id, lessonId } },
+      where: { visitorId_lessonId: { visitorId, lessonId } },
       update: { completed: true },
-      create: { userId: user.id, lessonId, completed: true },
+      create: { visitorId, lessonId, completed: true },
     });
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { points: { increment: 25 } },
-    });
-
     revalidatePath(`/lessons/${lessonSlug}`);
-    revalidatePath('/dashboard');
-    return { ok: true, message: '🎉 Correct! +25 points' };
+    revalidatePath('/lessons');
+    revalidatePath('/');
+    return { ok: true, message: '🎉 Correct!' };
   }
 
   return { ok: false, message: 'Not quite — try again.' };
@@ -85,10 +69,7 @@ export async function submitQuizAction(input: {
   total: number;
   score: number;
 }> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error('UNAUTHENTICATED');
-  }
+  const visitorId = getVisitorId();
   const parsed = submitQuizSchema.parse(input);
 
   const questions = await prisma.quizQuestion.findMany({
@@ -115,11 +96,10 @@ export async function submitQuizAction(input: {
 
   const total = questions.length;
   const score = total === 0 ? 0 : Math.round((correct / total) * 100);
-  const pointsEarned = correct * 5;
 
   await prisma.quizAttempt.create({
     data: {
-      userId: user.id,
+      visitorId,
       lessonId: parsed.lessonId,
       score,
       correct,
@@ -127,20 +107,20 @@ export async function submitQuizAction(input: {
     },
   });
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { points: { increment: pointsEarned } },
-  });
-
   if (score >= 80) {
     await prisma.lessonProgress.upsert({
-      where: { userId_lessonId: { userId: user.id, lessonId: parsed.lessonId } },
+      where: { visitorId_lessonId: { visitorId, lessonId: parsed.lessonId } },
       update: { completed: true },
-      create: { userId: user.id, lessonId: parsed.lessonId, completed: true },
+      create: {
+        visitorId,
+        lessonId: parsed.lessonId,
+        completed: true,
+      },
     });
   }
 
-  revalidatePath('/dashboard');
+  revalidatePath('/lessons');
+  revalidatePath('/');
 
   return { results, correct, total, score };
 }

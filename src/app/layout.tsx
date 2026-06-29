@@ -1,18 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getSessionUser } from '@/lib/auth';
-import { LogoutButton } from '@/components/LogoutButton';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Learninx — Learn Linux the Easy Way',
   description:
-    'An interactive Linux learning platform with in-browser terminal, lessons, and quizzes.',
+    'An interactive Linux learning platform with in-browser terminal, lessons, and quizzes. No signup required.',
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const user = await getSessionUser();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
@@ -29,27 +25,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/lessons" className="hover:text-terminal-accent">
                 Lessons
               </Link>
-              {user ? (
-                <>
-                  <Link href="/dashboard" className="hover:text-terminal-accent">
-                    Dashboard ({user.points} pts)
-                  </Link>
-                  <span className="text-slate-400 hidden sm:inline">{user.email}</span>
-                  <LogoutButton />
-                </>
-              ) : (
-                <>
-                  <Link href="/login" className="hover:text-terminal-accent">
-                    Log in
-                  </Link>
-                  <Link
-                    href="/signup"
-                    className="bg-terminal-accent text-slate-900 px-3 py-1.5 rounded-md font-medium hover:bg-emerald-300"
-                  >
-                    Sign up
-                  </Link>
-                </>
-              )}
+              <a
+                href="https://github.com/raveendra11/Learninx"
+                target="_blank"
+                rel="noreferrer"
+                className="text-slate-400 hover:text-terminal-accent hidden sm:inline"
+              >
+                GitHub
+              </a>
             </div>
           </nav>
         </header>
@@ -57,7 +40,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
 
         <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-sm text-slate-500">
-          Built for learning Linux — open source • MIT
+          Built for learning Linux — open source • no signup, no tracking
         </footer>
       </body>
     </html>

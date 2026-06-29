@@ -24,13 +24,6 @@ export interface QuizQuestionSeed {
   }[];
 }
 
-export interface SessionUser {
-  id: string;
-  email: string;
-  name: string | null;
-  points: number;
-}
-
 export interface QuizAnswerResult {
   questionId: string;
   prompt: string;
