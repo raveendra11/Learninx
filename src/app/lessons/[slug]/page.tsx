@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getVisitorId } from '@/lib/visitor';
 import { Markdown } from '@/components/Markdown';
 import { Terminal } from '@/components/Terminal';
 import { ChallengeRunner } from '@/components/ChallengeRunner';
@@ -26,12 +26,10 @@ export default async function LessonPage({ params }: PageProps) {
     orderBy: { order: 'asc' },
   });
 
-  const user = await getSessionUser();
-  const progress = user
-    ? await prisma.lessonProgress.findUnique({
-        where: { userId_lessonId: { userId: user.id, lessonId: lesson.id } },
-      })
-    : null;
+  const visitorId = getVisitorId();
+  const progress = await prisma.lessonProgress.findUnique({
+    where: { visitorId_lessonId: { visitorId, lessonId: lesson.id } },
+  });
 
   return (
     <div className="grid lg:grid-cols-5 gap-6">
@@ -111,7 +109,9 @@ export default async function LessonPage({ params }: PageProps) {
               {next.title} →
             </Link>
           ) : (
-            <span className="text-sm text-slate-500">🎉 You finished the track!</span>
+            <span className="text-sm text-slate-500">
+              🎉 You finished the track!
+            </span>
           )}
         </nav>
       </article>

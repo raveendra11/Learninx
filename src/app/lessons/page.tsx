@@ -1,30 +1,29 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
-import { getSessionUser } from '@/lib/auth';
+import { getVisitorId } from '@/lib/visitor';
 
 export default async function LessonsIndexPage() {
   const lessons = await prisma.lesson.findMany({ orderBy: { order: 'asc' } });
-  const user = await getSessionUser();
+  const visitorId = getVisitorId();
 
-  const progressList = user
-    ? await prisma.lessonProgress.findMany({ where: { userId: user.id } })
-    : [];
-  const completedSlugs = new Set(
-    progressList.filter((p) => p.completed).map((p) => p.lessonId),
+  const progress = await prisma.lessonProgress.findMany({
+    where: { visitorId },
+  });
+  const completedLessonIds = new Set(
+    progress.filter((p) => p.completed).map((p) => p.lessonId),
   );
 
-  const lessonsWithStatus = await Promise.all(
-    lessons.map(async (l) => ({
-      ...l,
-      completed: completedSlugs.has(l.id),
-    })),
-  );
+  const lessonsWithStatus = lessons.map((l) => ({
+    ...l,
+    completed: completedLessonIds.has(l.id),
+  }));
 
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Lessons</h1>
       <p className="text-slate-400 mb-8">
-        Work through the chapters in order. Each lesson ends with a small challenge.
+        Work through the chapters in order. Each lesson ends with a small
+        challenge. Your progress is saved on this browser.
       </p>
 
       <div className="space-y-4">

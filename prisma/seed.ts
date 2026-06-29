@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { LESSONS, QUIZ_QUESTIONS } from '../src/lib/lessons';
 
 const prisma = new PrismaClient();
@@ -33,7 +32,6 @@ async function main() {
       },
     });
 
-    // Replace quiz questions for this lesson.
     await prisma.quizQuestion.deleteMany({ where: { lessonId: stored.id } });
 
     const qb = QUIZ_QUESTIONS.find((q) => q.lessonSlug === lesson.slug);
@@ -52,17 +50,7 @@ async function main() {
     }
   }
 
-  // Optional demo learner account.
-  const email = 'demo@learninx.dev';
-  const passwordHash = await bcrypt.hash('demo1234', 10);
-
-  await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email, name: 'Demo Learner', passwordHash, points: 50 },
-  });
-
-  console.log('✅ Seed complete.');
+  console.log('✅ Seed complete. No user accounts needed — anonymous mode.');
 }
 
 main()
