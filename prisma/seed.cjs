@@ -1,10 +1,21 @@
-import { PrismaClient } from '@prisma/client';
-import { LESSONS, QUIZ_QUESTIONS } from '../src/lib/lessons';
+/* eslint-disable @typescript-eslint/no-var-requires */
+/**
+ * Plain-CommonJS seed script.
+ *
+ * Runs in two places:
+ *   - local dev: `npm run db:seed`
+ *   - Docker container start: `node prisma/seed.cjs`
+ *
+ * No tsx, esbuild, or other dev-only tooling required at runtime.
+ */
+
+const { PrismaClient } = require('@prisma/client');
+const { LESSONS, QUIZ_QUESTIONS } = require('./lessons.data.cjs');
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Seeding lessons...');
+(async () => {
+  console.log('[seed] applying lesson catalogue...');
 
   for (const lesson of LESSONS) {
     const stored = await prisma.lesson.upsert({
@@ -50,14 +61,14 @@ async function main() {
     }
   }
 
-  console.log('✅ Seed complete. No user accounts needed — anonymous mode.');
-}
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  console.log('[seed] done.');
+  await prisma.$disconnect();
+})().catch(async (err) => {
+  console.error('[seed] failed:', err);
+  try {
+    await new PrismaClient().$disconnect();
+  } catch (_) {
+    /* ignore */
+  }
+  process.exit(1);
+});

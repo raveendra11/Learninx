@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: 'Learninx — Learn Linux the Easy Way',
   description:
     'An interactive Linux learning platform with in-browser terminal, lessons, and quizzes. No signup required.',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

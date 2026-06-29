@@ -1,10 +1,17 @@
-import type { LessonSeed, QuizQuestionSeed } from '@/lib/types';
-
 /**
  * Lesson catalogue shipped with Learninx.
- * Markdown content is rendered with `react-markdown` on the lesson page.
+ *
+ * Plain CommonJS so the same data file works in:
+ *   - the runtime seed script (`prisma/seed.cjs`) inside the Docker image
+ *   - local development seeding
+ *
+ * The Markdown content is loaded by Next.js server components at runtime
+ * (the rendered lessons are stored in the SQLite database). This file
+ * is therefore the **single seed-time source of truth** for the lesson
+ * catalogue.
  */
-export const LESSONS: LessonSeed[] = [
+
+const LESSONS = [
   {
     slug: 'getting-started',
     title: 'Getting Started with Linux',
@@ -14,7 +21,7 @@ export const LESSONS: LessonSeed[] = [
     trackCommand: 'whoami',
     content: `# Getting Started with Linux
 
-**Linux** is a free, open-source operating system kernel that powers everything from phones to supercomputers. Most servers on the internet run Linux — and it is the single most important skill for anyone in DevOps, cloud, or backend development.
+**Linux** is a free, open-source operating system kernel that powers everything from phones to supercomputers. Most servers on the internet run Linux, and it is the single most important skill for anyone in DevOps, cloud, or backend development.
 
 ## What is the shell?
 
@@ -33,12 +40,12 @@ echo hello      # print "hello"
 clear           # clear the screen
 \`\`\`
 
-> 💡 Lines that start with \`#\` are **comments** — the shell ignores them. They are just for you.
+> Lines that start with \`#\` are **comments**; the shell ignores them. They are just for you.
 
 ## Why learn the command line?
 
 - Far faster than clicking through menus.
-- Automatable — write a **script** once, run it forever.
+- Automatable; write a **script** once, run it forever.
 - Works the same on a tiny VM or a giant cluster.
 
 When you're ready, hit **Mark complete** and move to the next lesson.
@@ -55,7 +62,7 @@ When you're ready, hit **Mark complete** and move to the next lesson.
     trackCommand: 'ls',
     content: `# Filesystem Navigation
 
-Linux organises everything under a single root directory \`/\`. Unlike Windows, there are no drive letters — everything branches off \`/\`.
+Linux organises everything under a single root directory \`/\`. Unlike Windows, there are no drive letters; everything branches off \`/\`.
 
 ## Three commands you will use constantly
 
@@ -72,9 +79,9 @@ Linux organises everything under a single root directory \`/\`. Unlike Windows, 
 
 Special directory shortcuts:
 
-- \`.\` — the current directory
-- \`..\` — the parent directory
-- \`~\` — your home directory
+- \`.\` - the current directory
+- \`..\` - the parent directory
+- \`~\` - your home directory
 
 ## Try it
 
@@ -93,7 +100,7 @@ cd ~               # back home
   {
     slug: 'files-and-dirs',
     title: 'Creating and Manipulating Files',
-    description: 'touch, mkdir, cp, mv, rm — the core file operations.',
+    description: 'touch, mkdir, cp, mv, rm - the core file operations.',
     difficulty: 'beginner',
     order: 3,
     trackCommand: 'mkdir',
@@ -127,14 +134,14 @@ rm renamed.txt               # delete a file
 rm -r projects               # delete a directory recursively
 \`\`\`
 
-> ⚠️ \`rm\` is **permanent**. There is no recycle bin. Triple-check before running \`rm -rf /\`.
+> Warning: \`rm\` is **permanent**. There is no recycle bin. Triple-check before running \`rm -rf /\`.
 
 ## Edit
 
 You'll often edit files straight from the terminal:
 
-- \`nano notes.txt\` — beginner-friendly editor
-- \`vim notes.txt\` — powerful but steep learning curve
+- \`nano notes.txt\` - beginner-friendly editor
+- \`vim notes.txt\` - powerful but steep learning curve
 `,
     challenge: 'Create a new directory called `lab` and then create an empty file `lab/notes.txt` inside it. Do it in two commands.',
     solution: 'mkdir lab && touch lab/notes.txt',
@@ -160,10 +167,10 @@ Run \`ls -l\` and you will see something like:
 
 Breakdown:
 
-- \`-\` — regular file (\`d\` for directory)
-- \`rwx\` — owner can read, write, execute
-- \`r-x\` — group can read and execute
-- \`---\` — others have no access
+- \`-\` - regular file (\`d\` for directory)
+- \`rwx\` - owner can read, write, execute
+- \`r-x\` - group can read and execute
+- \`---\` - others have no access
 
 ## Changing permissions
 
@@ -177,14 +184,14 @@ The numbers are octal:
 
 | Digit | r | w | x |
 | ----- | - | - | - |
-| 7     | ✓ | ✓ | ✓ |
-| 6     | ✓ | ✓ |   |
-| 5     | ✓ |   | ✓ |
-| 4     | ✓ |   |   |
+| 7     | yes | yes | yes |
+| 6     | yes | yes |     |
+| 5     | yes |     | yes |
+| 4     | yes |     |     |
 
 ## Why this matters
 
-Servers get hacked because files are too permissive. When in doubt, *least privilege* — grant only what is needed.
+Servers get hacked because files are too permissive. When in doubt, *least privilege* - grant only what is needed.
 `,
     challenge: 'Make `script.sh` executable for the owner only (no permissions for group or others).',
     solution: 'chmod 700 script.sh',
@@ -212,7 +219,7 @@ pgrep -a node          # find processes by name
 
 \`\`\`bash
 kill 1234              # polite shutdown (SIGTERM)
-kill -9 1234           # force kill (SIGKILL) — last resort
+kill -9 1234           # force kill (SIGKILL) - last resort
 pkill -f "python app"  # kill by pattern
 \`\`\`
 
@@ -231,77 +238,49 @@ df -h                  # disk space
 - Run in background: \`python app.py &\`
 - Bring back to foreground: \`fg\`
 
-These tools are your first stop when "something is wrong" on a server.
+These tools are your first stop when something is wrong on a server.
 `,
     challenge: 'Show the top of the `ps aux` output filtered to lines containing the word `root`.',
     solution: 'ps aux | grep root',
   },
 ];
 
-export const QUIZ_QUESTIONS: QuizQuestionSeed[] = [
+const QUIZ_QUESTIONS = [
   {
     lessonSlug: 'getting-started',
     questions: [
-      {
-        prompt: 'Which command prints text to the screen?',
-        answer: 'echo',
-      },
-      {
-        prompt: 'What does `whoami` tell you?',
-        answer: 'user',
-      },
+      { prompt: 'Which command prints text to the screen?', answer: 'echo' },
+      { prompt: 'What does `whoami` tell you?', answer: 'user' },
     ],
   },
   {
     lessonSlug: 'filesystem-navigation',
     questions: [
-      {
-        prompt: 'Which command prints the current working directory?',
-        answer: 'pwd',
-      },
-      {
-        prompt: 'Which symbol means "your home directory"?',
-        answer: '~',
-      },
+      { prompt: 'Which command prints the current working directory?', answer: 'pwd' },
+      { prompt: 'Which symbol means "your home directory"?', answer: '~' },
     ],
   },
   {
     lessonSlug: 'files-and-dirs',
     questions: [
-      {
-        prompt: 'What flag on `mkdir` creates nested directories?',
-        answer: '-p',
-      },
-      {
-        prompt: 'Which command deletes an empty file?',
-        answer: 'rm',
-      },
+      { prompt: 'What flag on `mkdir` creates nested directories?', answer: '-p' },
+      { prompt: 'Which command deletes an empty file?', answer: 'rm' },
     ],
   },
   {
     lessonSlug: 'users-and-permissions',
     questions: [
-      {
-        prompt: 'In `chmod 755`, what does the first digit control?',
-        answer: 'owner',
-      },
-      {
-        prompt: 'True or false: `chmod +x` adds execute permission. (answer: true or false)',
-        answer: 'true',
-      },
+      { prompt: 'In `chmod 755`, what does the first digit control?', answer: 'owner' },
+      { prompt: 'True or false: `chmod +x` adds execute permission. (answer: true or false)', answer: 'true' },
     ],
   },
   {
     lessonSlug: 'processes-and-system',
     questions: [
-      {
-        prompt: 'Which command shows a live, updating process list?',
-        answer: 'top',
-      },
-      {
-        prompt: 'Which signal number forces a kill?',
-        answer: '9',
-      },
+      { prompt: 'Which command shows a live, updating process list?', answer: 'top' },
+      { prompt: 'Which signal number forces a kill?', answer: '9' },
     ],
   },
 ];
+
+module.exports = { LESSONS, QUIZ_QUESTIONS };

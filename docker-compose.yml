@@ -5,7 +5,10 @@ services:
     container_name: learninx
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      # Map container port 3000 to host port 3001 so the local `npm run
+      # dev` server (which already uses host port 3000) can keep running.
+      # To reclaim port 3000 exclusively, stop the dev server first.
+      - "3001:3000"
     environment:
       # Point the in-container app at the SQLite file on the volume.
       - DATABASE_URL=file:/data/dev.db
