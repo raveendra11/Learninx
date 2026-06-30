@@ -238,8 +238,10 @@ export function Terminal({
   }
 
   return (
-    <div className={`rounded-xl overflow-hidden border border-slate-800 bg-terminal-bg ${className}`}>
-      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/70 text-xs">
+    <div
+      className={`rounded-xl overflow-hidden border border-slate-800 bg-terminal-bg flex flex-col h-full ${className}`}
+    >
+      <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800 bg-slate-900/70 text-xs shrink-0">
         <div className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-full bg-red-500/80" />
           <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
@@ -255,7 +257,7 @@ export function Terminal({
           </button>
         )}
       </div>
-      <div ref={containerRef} style={{ minHeight: 320, padding: 8 }} />
+      <div ref={containerRef} className="flex-1 min-h-0 p-2" />
     </div>
   );
 }

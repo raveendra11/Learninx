@@ -22,7 +22,7 @@ export default async function LessonsIndexPage() {
   }));
 
   return (
-    <div>
+    <div className="max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">Lessons</h1>
       <p className="text-slate-400 mb-8">
         Work through the chapters in order. Each lesson ends with a small
