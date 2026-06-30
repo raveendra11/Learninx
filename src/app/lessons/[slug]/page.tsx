@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { getVisitorId } from '@/lib/visitor';
 import { Markdown } from '@/components/Markdown';
-import { Terminal } from '@/components/Terminal';
+import { TerminalClient as Terminal } from '@/components/TerminalClient';
 import { ChallengeRunner } from '@/components/ChallengeRunner';
 import { LessonQuiz } from '@/components/LessonQuiz';
 import { CompleteButton } from '@/components/CompleteButton';
@@ -32,8 +32,8 @@ export default async function LessonPage({ params }: PageProps) {
   });
 
   return (
-    <div className="grid lg:grid-cols-5 gap-6">
-      <article className="lg:col-span-3 space-y-6">
+    <div className="lg:flex lg:items-start lg:gap-8">
+      <article className="lg:flex-1 lg:min-w-0 lg:max-w-2xl xl:max-w-3xl lg:ml-[max(1rem,calc((100vw-80rem)/2))] space-y-6">
         <div>
           <Link
             href="/lessons"
@@ -116,16 +116,19 @@ export default async function LessonPage({ params }: PageProps) {
         </nav>
       </article>
 
-      <aside className="lg:col-span-2 lg:sticky lg:top-20 self-start space-y-3">
-        <div className="text-sm text-slate-400">Sandbox</div>
-        <Terminal
-          suggestion={
-            lesson.trackCommand
-              ? { command: lesson.trackCommand, expected: lesson.trackCommand }
-              : undefined
-          }
-        />
-        <p className="text-xs text-slate-500">
+      <aside className="lg:flex-[1.4] lg:min-w-0 lg:sticky lg:top-20 self-start h-[calc(100vh-6rem)] flex flex-col lg:mr-4">
+        <div className="text-sm text-slate-400 mb-2 shrink-0">Sandbox</div>
+        <div className="flex-1 min-h-0">
+          <Terminal
+            className="h-full flex flex-col"
+            suggestion={
+              lesson.trackCommand
+                ? { command: lesson.trackCommand, expected: lesson.trackCommand }
+                : undefined
+            }
+          />
+        </div>
+        <p className="text-xs text-slate-500 mt-2 shrink-0">
           This is a safe in-browser shell. Nothing here touches your real
           machine. Type <code>help</code> to see what you can run.
         </p>

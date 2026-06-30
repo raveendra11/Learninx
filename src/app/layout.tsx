@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </nav>
         </header>
 
-        <main className="max-w-6xl mx-auto px-4 py-8">{children}</main>
+        <main className="px-4 py-8">{children}</main>
 
         <footer className="max-w-6xl mx-auto px-4 py-8 text-center text-sm text-slate-500">
           Built for learning Linux — open source • no signup, no tracking

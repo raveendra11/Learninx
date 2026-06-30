@@ -16,7 +16,7 @@ export default async function Home() {
   const quizAttempts = await prisma.quizAttempt.count({ where: { visitorId } });
 
   return (
-    <div className="space-y-12">
+    <div className="max-w-6xl mx-auto space-y-12">
       <section className="text-center pt-10 pb-6">
         <p className="text-terminal-accent font-mono text-sm mb-4">
           ~/welcome $ cat about.txt
