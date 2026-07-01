@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { prisma } from '@/lib/db';
-import { getVisitorId } from '@/lib/visitor';
+import { getAllLessons, getQuestionsForLesson } from '@/lib/lessons';
+import { isLessonCompleted } from '@/lib/progress';
 import { Markdown } from '@/components/Markdown';
 import { TerminalClient as Terminal } from '@/components/TerminalClient';
 import { ChallengeRunner } from '@/components/ChallengeRunner';
@@ -12,8 +12,11 @@ interface PageProps {
   params: { slug: string };
 }
 
-export default async function LessonPage({ params }: PageProps) {
-  const lessons = await prisma.lesson.findMany({ orderBy: { order: 'asc' } });
+// Read per-visitor progress on every render.
+export const dynamic = 'force-dynamic';
+
+export default function LessonPage({ params }: PageProps) {
+  const lessons = getAllLessons();
   const idx = lessons.findIndex((l) => l.slug === params.slug);
   if (idx === -1) notFound();
   const lesson = lessons[idx];
@@ -21,15 +24,8 @@ export default async function LessonPage({ params }: PageProps) {
   const previous = idx > 0 ? lessons[idx - 1] : null;
   const next = idx < lessons.length - 1 ? lessons[idx + 1] : null;
 
-  const questions = await prisma.quizQuestion.findMany({
-    where: { lessonId: lesson.id },
-    orderBy: { order: 'asc' },
-  });
-
-  const visitorId = getVisitorId();
-  const progress = await prisma.lessonProgress.findUnique({
-    where: { visitorId_lessonId: { visitorId, lessonId: lesson.id } },
-  });
+  const questions = getQuestionsForLesson(lesson.id);
+  const completed = isLessonCompleted(lesson.id);
 
   return (
     <div className="lg:flex lg:items-start lg:gap-8">
@@ -46,7 +42,7 @@ export default async function LessonPage({ params }: PageProps) {
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 uppercase tracking-wide">
               {lesson.difficulty}
             </span>
-            {progress?.completed && (
+            {completed && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-300">
                 ✓ Completed
               </span>
@@ -65,7 +61,7 @@ export default async function LessonPage({ params }: PageProps) {
             <ChallengeRunner
               lessonId={lesson.id}
               lessonSlug={lesson.slug}
-              initiallyCompleted={!!progress?.completed}
+              initiallyCompleted={completed}
             />
           </section>
         )}
@@ -86,7 +82,7 @@ export default async function LessonPage({ params }: PageProps) {
           </section>
         )}
 
-        {progress?.completed === false && (
+        {!completed && (
           <CompleteButton lessonId={lesson.id} />
         )}
 

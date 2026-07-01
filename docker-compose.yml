@@ -10,12 +10,8 @@ services:
       # To reclaim port 3000 exclusively, stop the dev server first.
       - "3001:3000"
     environment:
-      # Point the in-container app at the SQLite file on the volume.
-      - DATABASE_URL=file:/data/dev.db
+      # Optional: a stable cookie-signing secret. Pick a long random string
+      # in production. If unset, the server uses a per-process key (which
+      # means progress cookies reset on every container restart).
+      - LEARNINX_SECRET=
       - NODE_ENV=production
-    volumes:
-      # Persist the SQLite database + lesson progress across container restarts.
-      - learninx-data:/data
-
-volumes:
-  learninx-data:

@@ -1,20 +1,13 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
-import { getVisitorId } from '@/lib/visitor';
+import { getAllLessons } from '@/lib/lessons';
+import { getCompletedLessonIds } from '@/lib/progress';
 
-// Always read from the live database — never try to prerender at build time.
+// Read per-visitor progress on every render.
 export const dynamic = 'force-dynamic';
 
-export default async function LessonsIndexPage() {
-  const lessons = await prisma.lesson.findMany({ orderBy: { order: 'asc' } });
-  const visitorId = getVisitorId();
-
-  const progress = await prisma.lessonProgress.findMany({
-    where: { visitorId },
-  });
-  const completedLessonIds = new Set(
-    progress.filter((p) => p.completed).map((p) => p.lessonId),
-  );
+export default function LessonsIndexPage() {
+  const lessons = getAllLessons();
+  const completedLessonIds = getCompletedLessonIds();
 
   const lessonsWithStatus = lessons.map((l) => ({
     ...l,
