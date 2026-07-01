@@ -1,24 +1,29 @@
 /**
- * Lesson catalogue shipped with Learninx.
+ * Lesson catalogue and quiz questions — single source of truth, in code.
  *
- * Plain CommonJS so the same data file works in:
- *   - the runtime seed script (`prisma/seed.cjs`) inside the Docker image
- *   - local development seeding
+ * The previous version of this project stored lessons and quiz questions in a
+ * SQLite database via Prisma. That layer has been removed. Lessons and quizzes
+ * now ship directly in the JavaScript bundle so the app needs no DB to run.
  *
- * The Markdown content is loaded by Next.js server components at runtime
- * (the rendered lessons are stored in the SQLite database). This file
- * is therefore the **single seed-time source of truth** for the lesson
- * catalogue.
+ * Per-visitor progress (which lessons are completed, quiz scores) is stored
+ * in a signed cookie — see `./progress.ts`. This keeps the app stateless
+ * server-side while still giving each browser a persistent "profile" without
+ * a signup flow.
  */
 
-const LESSONS = [
+import type { Lesson, QuizQuestion } from './types';
+
+export const LESSONS: Lesson[] = [
   {
+    id: 'getting-started',
     slug: 'getting-started',
     title: 'Getting Started with Linux',
     description: 'What Linux is, the shell, and your first commands.',
     difficulty: 'beginner',
     order: 1,
     trackCommand: 'whoami',
+    challenge: 'Use a single command to print the word `linux` to the screen.',
+    solution: 'echo linux',
     content: `# Getting Started with Linux
 
 **Linux** is a free, open-source operating system kernel that powers everything from phones to supercomputers. Most servers on the internet run Linux, and it is the single most important skill for anyone in DevOps, cloud, or backend development.
@@ -50,16 +55,17 @@ clear           # clear the screen
 
 When you're ready, hit **Mark complete** and move to the next lesson.
 `,
-    challenge: 'Use a single command to print the word `linux` to the screen.',
-    solution: 'echo linux',
   },
   {
+    id: 'filesystem-navigation',
     slug: 'filesystem-navigation',
     title: 'Filesystem Navigation',
     description: 'Move around the filesystem with `pwd`, `ls`, and `cd`.',
     difficulty: 'beginner',
     order: 2,
     trackCommand: 'ls',
+    challenge: 'From `/home/learner`, change into the `projects` directory.',
+    solution: 'cd projects',
     content: `# Filesystem Navigation
 
 Linux organises everything under a single root directory \`/\`. Unlike Windows, there are no drive letters; everything branches off \`/\`.
@@ -94,16 +100,18 @@ pwd                # confirm you're now in /tmp
 cd ~               # back home
 \`\`\`
 `,
-    challenge: 'From `/home/learner`, change into the `projects` directory.',
-    solution: 'cd projects',
   },
   {
+    id: 'files-and-dirs',
     slug: 'files-and-dirs',
     title: 'Creating and Manipulating Files',
     description: 'touch, mkdir, cp, mv, rm - the core file operations.',
     difficulty: 'beginner',
     order: 3,
     trackCommand: 'mkdir',
+    challenge:
+      'Create a new directory called `lab` and then create an empty file `lab/notes.txt` inside it. Do it in two commands.',
+    solution: 'mkdir lab && touch lab/notes.txt',
     content: `# Creating and Manipulating Files
 
 In this lesson you'll learn the everyday verbs for working with files and directories.
@@ -143,16 +151,18 @@ You'll often edit files straight from the terminal:
 - \`nano notes.txt\` - beginner-friendly editor
 - \`vim notes.txt\` - powerful but steep learning curve
 `,
-    challenge: 'Create a new directory called `lab` and then create an empty file `lab/notes.txt` inside it. Do it in two commands.',
-    solution: 'mkdir lab && touch lab/notes.txt',
   },
   {
+    id: 'users-and-permissions',
     slug: 'users-and-permissions',
     title: 'Users and Permissions',
     description: 'Understand users, groups, and the chmod / chown commands.',
     difficulty: 'intermediate',
     order: 4,
     trackCommand: 'chmod',
+    challenge:
+      'Make `script.sh` executable for the owner only (no permissions for group or others).',
+    solution: 'chmod 700 script.sh',
     content: `# Users and Permissions
 
 Linux is a **multi-user** system. Every file belongs to a user and a group, and has three permission sets: **owner**, **group**, and **everyone else**.
@@ -193,16 +203,18 @@ The numbers are octal:
 
 Servers get hacked because files are too permissive. When in doubt, *least privilege* - grant only what is needed.
 `,
-    challenge: 'Make `script.sh` executable for the owner only (no permissions for group or others).',
-    solution: 'chmod 700 script.sh',
   },
   {
+    id: 'processes-and-system',
     slug: 'processes-and-system',
     title: 'Processes and the System',
     description: 'ps, top, kill, and how to find what is running.',
     difficulty: 'intermediate',
     order: 5,
     trackCommand: 'ps',
+    challenge:
+      'Show the top of the `ps aux` output filtered to lines containing the word `root`.',
+    solution: 'ps aux | grep root',
     content: `# Processes and the System
 
 A **process** is a running program. Linux gives every process a numeric ID called a **PID**.
@@ -240,47 +252,96 @@ df -h                  # disk space
 
 These tools are your first stop when something is wrong on a server.
 `,
-    challenge: 'Show the top of the `ps aux` output filtered to lines containing the word `root`.',
-    solution: 'ps aux | grep root',
   },
 ];
 
-const QUIZ_QUESTIONS = [
+export const QUIZ_QUESTIONS: QuizQuestion[] = [
   {
-    lessonSlug: 'getting-started',
-    questions: [
-      { prompt: 'Which command prints text to the screen?', answer: 'echo' },
-      { prompt: 'What does `whoami` tell you?', answer: 'user' },
-    ],
+    id: 'q-gs-1',
+    lessonId: 'getting-started',
+    order: 0,
+    prompt: 'Which command prints text to the screen?',
+    answer: 'echo',
   },
   {
-    lessonSlug: 'filesystem-navigation',
-    questions: [
-      { prompt: 'Which command prints the current working directory?', answer: 'pwd' },
-      { prompt: 'Which symbol means "your home directory"?', answer: '~' },
-    ],
+    id: 'q-gs-2',
+    lessonId: 'getting-started',
+    order: 1,
+    prompt: 'What does `whoami` tell you?',
+    answer: 'user',
   },
   {
-    lessonSlug: 'files-and-dirs',
-    questions: [
-      { prompt: 'What flag on `mkdir` creates nested directories?', answer: '-p' },
-      { prompt: 'Which command deletes an empty file?', answer: 'rm' },
-    ],
+    id: 'q-fs-1',
+    lessonId: 'filesystem-navigation',
+    order: 0,
+    prompt: 'Which command prints the current working directory?',
+    answer: 'pwd',
   },
   {
-    lessonSlug: 'users-and-permissions',
-    questions: [
-      { prompt: 'In `chmod 755`, what does the first digit control?', answer: 'owner' },
-      { prompt: 'True or false: `chmod +x` adds execute permission. (answer: true or false)', answer: 'true' },
-    ],
+    id: 'q-fs-2',
+    lessonId: 'filesystem-navigation',
+    order: 1,
+    prompt: 'Which symbol means "your home directory"?',
+    answer: '~',
   },
   {
-    lessonSlug: 'processes-and-system',
-    questions: [
-      { prompt: 'Which command shows a live, updating process list?', answer: 'top' },
-      { prompt: 'Which signal number forces a kill?', answer: '9' },
-    ],
+    id: 'q-fd-1',
+    lessonId: 'files-and-dirs',
+    order: 0,
+    prompt: 'What flag on `mkdir` creates nested directories?',
+    answer: '-p',
+  },
+  {
+    id: 'q-fd-2',
+    lessonId: 'files-and-dirs',
+    order: 1,
+    prompt: 'Which command deletes an empty file?',
+    answer: 'rm',
+  },
+  {
+    id: 'q-up-1',
+    lessonId: 'users-and-permissions',
+    order: 0,
+    prompt: 'In `chmod 755`, what does the first digit control?',
+    answer: 'owner',
+  },
+  {
+    id: 'q-up-2',
+    lessonId: 'users-and-permissions',
+    order: 1,
+    prompt:
+      'True or false: `chmod +x` adds execute permission. (answer: true or false)',
+    answer: 'true',
+  },
+  {
+    id: 'q-ps-1',
+    lessonId: 'processes-and-system',
+    order: 0,
+    prompt: 'Which command shows a live, updating process list?',
+    answer: 'top',
+  },
+  {
+    id: 'q-ps-2',
+    lessonId: 'processes-and-system',
+    order: 1,
+    prompt: 'Which signal number forces a kill?',
+    answer: '9',
   },
 ];
 
-module.exports = { LESSONS, QUIZ_QUESTIONS };
+/** Lessons sorted by `order` — what every page renders. */
+export function getAllLessons(): Lesson[] {
+  return [...LESSONS].sort((a, b) => a.order - b.order);
+}
+
+/** Look up a lesson by slug. Returns `null` if it doesn't exist. */
+export function getLessonBySlug(slug: string): Lesson | null {
+  return LESSONS.find((l) => l.slug === slug) ?? null;
+}
+
+/** Quiz questions for a given lesson, ordered. */
+export function getQuestionsForLesson(lessonId: string): QuizQuestion[] {
+  return QUIZ_QUESTIONS.filter((q) => q.lessonId === lessonId).sort(
+    (a, b) => a.order - b.order,
+  );
+}

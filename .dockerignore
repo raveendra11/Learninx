@@ -1,0 +1,44 @@
+﻿# --- versions of files that should not enter the build context ---
+
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# next build output (regenerated inside the image)
+.next
+out
+
+# local SQLite — the image persists the DB on a volume instead
+*.db
+*.db-journal
+prisma/dev.db*
+
+# environment + secrets
+.env
+.env.local
+.env.development
+.env.production
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# editor + OS junk
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+*.swp
+
+# git
+.git
+.gitignore
+
+# CI / docs that don't belong in the image
+.github
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml

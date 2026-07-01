@@ -17,6 +17,12 @@ if (!existsSync(standalone)) {
 const copies = [
   { from: join(root, '.next', 'static'), to: join(standalone, '.next', 'static') },
   { from: join(root, 'public'), to: join(standalone, 'public') },
+  // Mirror any optional .env files into the standalone output. They are not
+  // required — the app runs without a database — but we copy them if they
+  // exist so deploys can pass secrets (e.g. LEARNINX_SECRET) via .env.
+  { from: join(root, '.env'), to: join(standalone, '.env') },
+  { from: join(root, '.env.production'), to: join(standalone, '.env.production') },
+  { from: join(root, '.env.local'), to: join(standalone, '.env.local') },
 ];
 
 for (const { from, to } of copies) {

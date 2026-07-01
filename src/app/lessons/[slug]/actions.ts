@@ -2,17 +2,30 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { getVisitorId } from '@/lib/visitor';
-import { prisma } from '@/lib/db';
+import {
+  getLessonBySlug,
+  getQuestionsForLesson,
+} from '@/lib/lessons';
+import {
+  markLessonComplete,
+  recordQuizScore,
+  type ProgressState,
+  type QuizScore,
+} from '@/lib/progress';
 import type { QuizAnswerResult } from '@/lib/types';
 
+const PASS_THRESHOLD = 80;
+
+function normalizeAnswer(s: string): string {
+  return s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/[.;!?]$/g, '');
+}
+
+function normalizeCommand(s: string): string {
+  return s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/;$/, '');
+}
+
 export async function markLessonCompleteAction(lessonId: string): Promise<void> {
-  const visitorId = getVisitorId();
-  await prisma.lessonProgress.upsert({
-    where: { visitorId_lessonId: { visitorId, lessonId } },
-    update: { completed: true },
-    create: { visitorId, lessonId, completed: true },
-  });
+  markLessonComplete(lessonId);
   revalidatePath('/lessons');
   revalidatePath('/');
 }
@@ -22,25 +35,19 @@ export async function submitChallengeAction(
   lessonSlug: string,
   command: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const visitorId = getVisitorId();
-
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId } });
-  if (!lesson?.solution) {
+  const lesson = getLessonBySlug(lessonSlug);
+  if (!lesson) {
+    return { ok: false, message: 'This lesson does not exist.' };
+  }
+  if (!lesson.solution) {
     return { ok: false, message: 'This lesson has no challenge.' };
   }
 
-  const normalize = (s: string) =>
-    s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/;$/, '');
-
-  const expected = normalize(lesson.solution);
+  const expected = normalizeCommand(lesson.solution);
   const accepted = expected.split('||').map((p) => p.trim());
 
-  if (accepted.includes(normalize(command))) {
-    await prisma.lessonProgress.upsert({
-      where: { visitorId_lessonId: { visitorId, lessonId } },
-      update: { completed: true },
-      create: { visitorId, lessonId, completed: true },
-    });
+  if (accepted.includes(normalizeCommand(command))) {
+    markLessonComplete(lesson.id);
     revalidatePath(`/lessons/${lessonSlug}`);
     revalidatePath('/lessons');
     revalidatePath('/');
@@ -68,22 +75,26 @@ export async function submitQuizAction(input: {
   correct: number;
   total: number;
   score: number;
+  progress: ProgressState;
 }> {
-  const visitorId = getVisitorId();
   const parsed = submitQuizSchema.parse(input);
 
-  const questions = await prisma.quizQuestion.findMany({
-    where: { lessonId: parsed.lessonId },
-    orderBy: { order: 'asc' },
-  });
-
-  const normalize = (s: string) =>
-    s.replace(/\s+/g, ' ').trim().toLowerCase().replace(/[.;!?]$/g, '');
+  const questions = getQuestionsForLesson(parsed.lessonId);
+  if (questions.length === 0) {
+    return {
+      results: [],
+      correct: 0,
+      total: 0,
+      score: 0,
+      progress: markLessonComplete(parsed.lessonId), // no quiz = auto-pass
+    };
+  }
 
   let correct = 0;
   const results: QuizAnswerResult[] = questions.map((q) => {
-    const given = parsed.answers.find((a) => a.questionId === q.id)?.answer ?? '';
-    const isCorrect = normalize(given) === normalize(q.answer);
+    const given =
+      parsed.answers.find((a) => a.questionId === q.id)?.answer ?? '';
+    const isCorrect = normalizeAnswer(given) === normalizeAnswer(q.answer);
     if (isCorrect) correct += 1;
     return {
       questionId: q.id,
@@ -95,32 +106,18 @@ export async function submitQuizAction(input: {
   });
 
   const total = questions.length;
-  const score = total === 0 ? 0 : Math.round((correct / total) * 100);
+  const score = Math.round((correct / total) * 100);
+  const quizScore: QuizScore = { score, correct, total, at: Date.now() };
 
-  await prisma.quizAttempt.create({
-    data: {
-      visitorId,
-      lessonId: parsed.lessonId,
-      score,
-      correct,
-      total,
-    },
-  });
-
-  if (score >= 80) {
-    await prisma.lessonProgress.upsert({
-      where: { visitorId_lessonId: { visitorId, lessonId: parsed.lessonId } },
-      update: { completed: true },
-      create: {
-        visitorId,
-        lessonId: parsed.lessonId,
-        completed: true,
-      },
-    });
+  // Persist the latest score, then conditionally mark the lesson complete.
+  let progress = recordQuizScore(parsed.lessonId, quizScore);
+  if (score >= PASS_THRESHOLD) {
+    progress = markLessonComplete(parsed.lessonId);
   }
 
   revalidatePath('/lessons');
   revalidatePath('/');
+  revalidatePath(`/lessons/${parsed.lessonId}`);
 
-  return { results, correct, total, score };
+  return { results, correct, total, score, progress };
 }

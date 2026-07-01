@@ -1,19 +1,16 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
-import { getVisitorId } from '@/lib/visitor';
+import { getAllLessons } from '@/lib/lessons';
+import { getProgress } from '@/lib/progress';
 
-// The home page reads the database and the per-browser visitor cookie, so it
-// must be rendered on demand and never at build time (no DB exists then).
+// The home page reads the per-browser progress cookie, so it must be
+// rendered on demand — never at build time.
 export const dynamic = 'force-dynamic';
 
-export default async function Home() {
-  const lessonCount = await prisma.lesson.count();
-  const visitorId = getVisitorId();
-
-  const completedCount = await prisma.lessonProgress.count({
-    where: { visitorId, completed: true },
-  });
-  const quizAttempts = await prisma.quizAttempt.count({ where: { visitorId } });
+export default function Home() {
+  const lessons = getAllLessons();
+  const progress = getProgress();
+  const completedCount = progress.completed.length;
+  const quizAttempts = Object.keys(progress.quiz).length;
 
   return (
     <div className="max-w-6xl mx-auto space-y-12">
@@ -43,11 +40,11 @@ export default async function Home() {
           </a>
         </div>
         <p className="text-xs text-slate-500 mt-4">
-          {lessonCount} lessons available — free forever.
+          {lessons.length} lessons available — free forever.
         </p>
         {(completedCount > 0 || quizAttempts > 0) && (
           <p className="text-xs text-slate-400 mt-1">
-            Your progress: {completedCount}/{lessonCount} lessons •{' '}
+            Your progress: {completedCount}/{lessons.length} lessons •{' '}
             {quizAttempts} quiz attempts
           </p>
         )}
